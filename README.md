@@ -1,2 +1,2 @@
 # merry-christmas
-a  simply christmas greetings wrote in Python, with all random tree, star and snow.
+a cli-based christmas greeting wrote in Python, with all random tree, star, snow and bling.
