@@ -14,6 +14,9 @@ star_density = 16
 snow_density = 12  # 数字越小雪越密集
 min_density = 1
 max_density = 32
+speed = 4
+min_speed = 1
+max_speed = 10
 
 gap = ' '
 snows = ['❄❆', '❅✲']
@@ -50,16 +53,21 @@ class Tree():
         self.trunk_height = 0
 
     def set_density(self):
-        density = max_density - star_density
-        if density < min_density:
-            self.density = min_density
-        if density > max_density:
-            density = max_density
+        global star_density
+        if star_density < min_density:
+            star_density = min_density
+        if star_density > max_density:
+            star_density = max_density
+        density = max_density - star_density + 1
         return density
 
     def generate_branch_part(self, start):
+        tree_top = [1, 3]
         height = random.randrange(5, 9)
-        part = list(range(start, start+(height*self.step), self.step))
+        if start == 1:
+            part = tree_top + list(range(5, start+(height*self.step), self.step))
+        else:
+            part = list(range(start, start+(height*self.step), self.step))
         i = 0
         for width in part:
             if width >= self.total_width:
@@ -70,6 +78,8 @@ class Tree():
 
     def generate_branch(self):
         part_number = random.randrange(5, 9)
+        shrink = random.randrange(8, 12, 2)
+
         branch = []
         width_start = 1
         for i in range(part_number):
@@ -77,8 +87,8 @@ class Tree():
                 width_start = 5
             part = self.generate_branch_part(width_start)
             branch += part
-            shrink = random.randrange(8, 12, 2)
             width_start = part[-1] - shrink
+            shrink += 4
         return branch
 
     def generate_trunk(self):
@@ -141,8 +151,9 @@ class Tree():
     def generate_frame(self):
         data = self.generate_data()
 
+        line = ''
         # 顶上预留一行空白, 以突出树尖
-        line = gap * self.total_width
+        # line += gap * self.total_width
         self.lines_.append(line)
         for width in data['branch']:
             line = self.generate_line(width)
@@ -180,11 +191,12 @@ class Snow():
         self.lines_ = []
 
     def set_density(self):
-        density = max_density - snow_density
-        if density < min_density:
-            self.density = min_density
-        if density > max_density:
-            density = max_density
+        global snow_density
+        if snow_density < min_density:
+            snow_density = min_density
+        if snow_density > max_density:
+            snow_density = max_density
+        density = max_density - snow_density + 1
         return density
 
     def generate_line(self):
@@ -308,6 +320,8 @@ def print_snow():
     sys.stdout.flush()
 
 def run():
+    global speed
+    
     tree = Tree()
     snow = Snow()
     tree.generate_frame()
@@ -322,15 +336,21 @@ def run():
         sys.stdout.write(frame)
         sys.stdout.flush()
 
-        time.sleep(0.4)
+        if speed < min_speed:
+            speed = min_speed
+        if speed > max_speed:
+            speed = max_speed
+        delay = max_speed - speed + 1
+        time.sleep(delay/10)
 
 if __name__ == '__main__':
     get_terminal_size()
     # os.system("mode con lines=%s" % terminal_height)
 
-    # poster = input('祝福语 (%s)\n> : ' % poster) or poster
-    # star_density = int(input('星星密集度 (%s - %s) %s\n> : ' % (min_density, max_density, star_density)) or star_density)
-    # snow_density = int(input('雪花密集度 (%s - %s) %s\n> : ' % (min_density, max_density, snow_density)) or snow_density)
+    poster = input('祝福语 (%s)\n> : ' % poster) or poster
+    star_density = int(input('星星密集度 (%s - %s) %s\n> : ' % (min_density, max_density, star_density)) or star_density)
+    snow_density = int(input('雪花密集度 (%s - %s) %s\n> : ' % (min_density, max_density, snow_density)) or snow_density)
+    speed = int(input('速度 (%s - %s) %s\n> : ' % (min_speed, max_speed, speed)) or speed)
 
     # print_tree()
     # print_snow()
