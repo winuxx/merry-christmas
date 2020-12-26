@@ -11,7 +11,7 @@ import unicodedata
 
 poster = ' Merry Christmas! '
 star_density = 16
-snow_density = 12  # 数字越小雪越密集
+snow_density = 8
 min_density = 1
 max_density = 32
 speed = 4
@@ -20,7 +20,7 @@ max_speed = 10
 is_snow_cover = False
 
 air = ' '
-wood = '|'
+woods = ['-', '|']
 stars = ['☆★', '◇◆', '△▲']
 snows = ['❅❆', '✲❄', '✡✱']
 snow_cover = '✡✱'
@@ -106,7 +106,7 @@ class Tree():
         # 树干居中
         # 若树顶宽度为1，树干宽度取奇数
         # 若宽度为2，树干宽度取偶数
-        width = random.choice([4, 6, 8])
+        width = random.choice([5, 7])
         height = random.randrange(3, 5)
         self.trunk_height = height
         return [width] * height
@@ -119,27 +119,30 @@ class Tree():
         tree_height = len(branch) + len(trunk)
         if tree_height <= self.max_height:
             sky = [char_map['air']] * (self.total_height - tree_height)
-            tree_data['branch'] = sky + branch
+            tree_data['sky'] = sky
+            tree_data['branch'] = branch
         else:
             sky = [char_map['air']] * (self.total_height - self.max_height)
-            tree_data['branch'] = sky + branch[0:(self.max_height-len(trunk))]
+            tree_data['sky'] = sky
+            tree_data['branch'] = branch[0:(self.max_height-len(trunk))]
 
         tree_data['trunk'] = trunk
 
         return tree_data
 
-    def generate_row(self, width, is_branch=True):
+    def generate_row(self, width, is_trunk=False):
         row_filled = []
-        col_last = char_map['wood']
+        wood_0 = char_map['wood'] * 10 + 0
+        wood_1 = char_map['wood'] * 10 + 1
         for i in range(width):
             filling = ''
-            if not is_branch:
-                col = char_map['wood']
-                filling = wood
+            if is_trunk:
+                col = wood_1
+                filling = woods[1]
             # 防止星星连续
-            elif col_last != char_map['wood']:
-                col = char_map['wood']
-                filling = wood
+            elif i > 0 and str(row_filled[i-1])[0] != str(char_map['wood']):  # star or placeholder
+                col = wood_0
+                filling = woods[0]
             else:
                 # 减少星星出现的概率
                 # 若有嵌套递归, random range 过大会报错
@@ -151,11 +154,11 @@ class Tree():
                     col = char_map['star'] * 100 + star_pair * 10 + star
                     filling = stars[star_pair][star]
                 else:
-                    col = char_map['wood']
-                    filling = wood
+                    wood = random.randrange(len(woods))
+                    col = char_map['wood'] * 10 + wood
+                    filling = woods[wood]
 
             row_filled.append(col)
-            col_last = col
 
             # 宽字符占2格
             if is_wide_char(filling):
@@ -172,27 +175,38 @@ class Tree():
         data = self.generate_data()
 
         row = []
+        for width in data['sky']:
+            row = self.generate_row(width)
+            self.frame_.append(row)
         for width in data['branch']:
             row = self.generate_row(width)
             self.frame_.append(row)
         for width in data['trunk']:
-            row = self.generate_row(width, False)
+            row = self.generate_row(width, is_trunk=True)
             self.frame_.append(row)
 
-    def star_bling(self):
+    def bling(self):
         frame_new = []
+        row_number = 0
         for row in self.frame_:
             row_new = []
             for col in row:
-                if col in [-1, 0, 1]:
+                # col: -1, 0, 1xx, 2xx
+                # 若此处判断不包含wood, 则wood(包括trunk)填充也会随机变化
+                if int(col/10) < char_map['wood']:
+                    row_new.append(col)
+                elif int(col/10) == char_map['wood'] \
+                and row_number >= self.total_height - self.trunk_height:
                     row_new.append(col)
                 else:
                     # 减少闪烁频率
                     # flag = random.randrange(2)
-                    star = random.randrange(2)
-                    col_new = int(str(col)[0:-1]) * 10 + star
+                    new = random.randrange(2)
+                    # 若wood未被排除, 则wood也会随机变化
+                    col_new = int(str(col)[0:-1]) * 10 + new
                     row_new.append(col_new)
             frame_new.append(row_new)
+            row_number += 1
 
         self.frame_ = frame_new
 
@@ -217,26 +231,25 @@ class Snow():
 
     def generate_row(self):
         row = []
-        col_last = char_map['air']
         for i in range(self.total_width-1):
             # 防止雪花连续
-            if col_last != char_map['air']:
-                row.append(char_map['air'])
-                col_last = char_map['air']
-                continue
+            if i > 0:
+                col_last = row[i-1]
+                if col_last != char_map['air']:
+                    row.append(char_map['air'])
+                    col_last = char_map['air']
+                    continue
 
             col = 0
             # 减少雪花出现的概率
             # 若有嵌套递归, random范围过大会报错
-            flag = random.randrange(0, self.density)
+            flag = random.randrange(0-self.density, self.density)
             if flag == 0:
                 snow_pair = random.randrange(len(snows))
                 snow = random.randrange(len(snows[snow_pair]))
                 col = char_map['snow'] * 100 + snow_pair * 10 + snow
             else:
                 col = char_map['air']
-
-            col_last = col
             row.append(col)
 
         return row
@@ -251,12 +264,12 @@ class Snow():
             self.frame_.pop()
             self.frame_.insert(0, row)
 
-    def snow_bling(self):
+    def bling(self):
         frame_new = []
         for row in self.frame_:
             row_new = []
             for col in row:
-                if col in [-1, 0]:
+                if str(col)[0] != str(char_map['snow']):
                     row_new.append(col)
                 else:
                     snow = random.randrange(2)
@@ -291,20 +304,21 @@ def mix_frames(tree_frame, snow_frame):
                 # 树覆盖雪
                 # 只判断tree_col, 否则若上一个col雪为宽字符而树不是, 则树会出现一位空白
                 mix_col = tree_col or snow_col
+
             if mix_col == char_map['placeholder']:
                 continue
-            elif mix_col == char_map['wood']:
-                filling = wood
-            elif int(str(mix_col)[0]) == char_map['star']:
+            elif str(mix_col)[0] == str(char_map['wood']):
+                filling = woods[int(str(mix_col)[1])]
+            elif str(mix_col)[0] == str(char_map['star']):
                 if is_snow_cover:
                     filling = stars[int(str(mix_col)[1])][1]
                 else:
                     filling = stars[int(str(mix_col)[1])][int(str(mix_col)[2])]
-            elif int(str(mix_col)[0]) == char_map['snow']:
+            elif str(mix_col)[0] == str(char_map['snow']):
                 if is_snow_cover:
                     if tree_col == char_map['wood']:
                         filling = snow_cover[0]
-                    elif str(tree_col)[0] != '-' and int(str(tree_col)[0]) == char_map['star']:
+                    elif str(tree_col)[0] == str(char_map['star']):
                         filling = stars[int(str(tree_col)[1])][0]
                     else:
                         filling = snows[int(str(mix_col)[1])][int(str(mix_col)[2])]
@@ -346,10 +360,10 @@ def run():
     snow = Snow()
     tree.generate_frame()
     while 1:
-        tree.star_bling()
+        tree.bling()
         tree_frame = tree.get_frame()
         snow.generate_frame()
-        snow.snow_bling()
+        snow.bling()
         snow_frame = snow.get_frame()
         frame = mix_frames(tree_frame, snow_frame)
 
@@ -368,12 +382,12 @@ if __name__ == '__main__':
     # os.system("mode con lines=%s" % terminal_height)
     os.system('cls')
 
-    custom = input('自定义? (y/N)\n> : ')
+    custom = input('自定义 Custom ? (y/N)\n> : ')
     if custom.lower() == 'y':
         poster = input('祝福语 (%s)\n> : ' % poster) or poster
         star_density = int(input('星星密集度 (%s - %s) %s\n> : ' % (min_density, max_density, star_density)) or star_density)
         snow_density = int(input('雪花密集度 (%s - %s) %s\n> : ' % (min_density, max_density, snow_density)) or snow_density)
-        speed = int(input('速度 (%s - %s) %s\n> : ' % (min_speed, max_speed, speed)) or speed)
+        speed = int(input('刷新速度 (%s - %s) %s\n> : ' % (min_speed, max_speed, speed)) or speed)
         choose_snow_cover = input('雪花覆盖树? (y/N)\n> : ')
         if choose_snow_cover.lower() == 'y':
             is_snow_cover = True
