@@ -14,7 +14,7 @@ star_density = 16
 snow_density = 8
 min_density = 1
 max_density = 32
-speed = 4
+speed = 5
 min_speed = 1
 max_speed = 10
 is_snow_cover = False
@@ -296,36 +296,48 @@ def mix_frames(tree_frame, snow_frame):
             filling = ''
             tree_col = tree_row[j]
             snow_col = snow_row[j]
+            tree_col_last = tree_row[j-1]
+
             if is_snow_cover:
                 # 雪覆盖树
                 # star 长亮, 被雪覆盖才变暗
                 mix_col = snow_col or tree_col
+
+                if mix_col == char_map['placeholder']:
+                    continue
+                elif str(mix_col)[0] == str(char_map['wood']):
+                    filling = woods[int(str(mix_col)[1])]
+                elif str(mix_col)[0] == str(char_map['star']):
+                    filling = stars[int(str(mix_col)[1])][1]
+                elif str(mix_col)[0] == str(char_map['snow']):
+                    if tree_col == char_map['wood']:
+                        filling = snow_cover[0]
+                    elif str(tree_col)[0] == str(char_map['star']):
+                        filling = stars[int(str(tree_col)[1])][0]
+                    # 上一格的★替换成☆
+                    elif str(tree_col) == str(char_map['placeholder']):
+                        filling = stars[int(str(tree_col_last)[1])][0]
+                        line = line[0:-1]
+                    else:
+                        filling = snows[int(str(mix_col)[1])][int(str(mix_col)[2])]
+                else:
+                    filling = air
             else:
                 # 树覆盖雪
                 # 只判断tree_col, 否则若上一个col雪为宽字符而树不是, 则树会出现一位空白
                 mix_col = tree_col or snow_col
 
-            if mix_col == char_map['placeholder']:
-                continue
-            elif str(mix_col)[0] == str(char_map['wood']):
-                filling = woods[int(str(mix_col)[1])]
-            elif str(mix_col)[0] == str(char_map['star']):
-                if is_snow_cover:
-                    filling = stars[int(str(mix_col)[1])][1]
-                else:
+                if mix_col == char_map['placeholder']:
+                    continue
+                elif str(mix_col)[0] == str(char_map['wood']):
+                    filling = woods[int(str(mix_col)[1])]
+                elif str(mix_col)[0] == str(char_map['star']):
                     filling = stars[int(str(mix_col)[1])][int(str(mix_col)[2])]
-            elif str(mix_col)[0] == str(char_map['snow']):
-                if is_snow_cover:
-                    if tree_col == char_map['wood']:
-                        filling = snow_cover[0]
-                    elif str(tree_col)[0] == str(char_map['star']):
-                        filling = stars[int(str(tree_col)[1])][0]
-                    else:
-                        filling = snows[int(str(mix_col)[1])][int(str(mix_col)[2])]
-                else:
+                elif str(mix_col)[0] == str(char_map['snow']):
                     filling = snows[int(str(mix_col)[1])][int(str(mix_col)[2])]
-            else:
-                filling = air
+                else:
+                    filling = air
+
 
             line += filling
 
@@ -387,10 +399,10 @@ if __name__ == '__main__':
         poster = input('祝福语 (%s)\n> : ' % poster) or poster
         star_density = int(input('星星密集度 (%s - %s) %s\n> : ' % (min_density, max_density, star_density)) or star_density)
         snow_density = int(input('雪花密集度 (%s - %s) %s\n> : ' % (min_density, max_density, snow_density)) or snow_density)
-        speed = int(input('刷新速度 (%s - %s) %s\n> : ' % (min_speed, max_speed, speed)) or speed)
-        choose_snow_cover = input('雪花覆盖树? (y/N)\n> : ')
+        choose_snow_cover = input('雪花覆盖树和星星? (y/N)\n> : ')
         if choose_snow_cover.lower() == 'y':
             is_snow_cover = True
+        speed = int(input('刷新速度 (%s - %s) %s\n> : ' % (min_speed, max_speed, speed)) or speed)
 
     # print_tree()
     # print_snow()
